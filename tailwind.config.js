@@ -6,19 +6,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        carbon: '#121212',
-        graphite: '#1E1E1E',
-        platinum: '#E0E0E0',
-        gold: '#FFD700',
-        electricBlue: '#00F0FF',
+        carbon: "#121212",
+        graphite: "#1E1E1E",
+        surface: "#2A2A2A",
+        surfaceHighlight: "#333333",
+        platinum: "#E0E0E0",
+        gold: "#FFD700",
+        electricBlue: "#00F0FF",
       },
       fontFamily: {
-        heading: ['PlayfairDisplay-Bold'],
-        body: ['Inter-Regular'],
-        ui: ['Oswald-Medium'],
+        heading: ["PlayfairDisplay-Bold"],
+        body: ["Inter-Regular"],
+        ui: ["Oswald-Medium"],
       },
     },
   },
   plugins: [],
-}
-
+};

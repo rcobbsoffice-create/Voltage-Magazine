@@ -1,112 +1,184 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Stack, router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useState } from "react";
+import {
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { supabase } from "../../lib/supabase";
+import { Article } from "../../types";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+// Simple debounce hook could be added, but for now we'll just search on submit or loose debounce
+export default function ExploreScreen() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState<
+    "ALL" | "ARTICLES" | "WRITERS"
+  >("ALL");
+  const [results, setResults] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(false);
 
-export default function TabTwoScreen() {
+  // Initial "Trending" fetch
+  useEffect(() => {
+    fetchTrending();
+  }, []);
+
+  const fetchTrending = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
+        .limit(5);
+
+      if (data) setResults(mapArticles(data));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return fetchTrending();
+
+    setLoading(true);
+    try {
+      // Simple ILIKE search on title or excerpt
+      const { data, error } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("status", "published")
+        .or(`title.ilike.%${searchQuery}%,excerpt.ilike.%${searchQuery}%`)
+        .order("published_at", { ascending: false });
+
+      if (data) setResults(mapArticles(data));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mapArticles = (data: any[]): Article[] => {
+    return data.map((item) => ({
+      id: item.id,
+      title: item.title,
+      slug: item.slug,
+      excerpt: item.excerpt,
+      content: item.content,
+      coverImage: item.cover_image,
+      author: item.author_json,
+      publishedAt: item.published_at,
+      isPremium: item.is_premium,
+    }));
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <View className="flex-1 bg-carbon pt-12">
+      <StatusBar style="light" />
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header / Search Area */}
+      <View className="px-6 pb-4 border-b border-gray-800">
+        <Text className="text-white font-heading text-3xl mb-4">Explore</Text>
+
+        <View className="flex-row bg-graphite border border-gray-700 rounded-lg p-3 items-center">
+          <Text className="text-gray-500 mr-2">🔍</Text>
+          <TextInput
+            className="flex-1 text-white font-body"
+            placeholder="Search articles, artists, sounds..."
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery("");
+                fetchTrending();
+              }}
+            >
+              <Text className="text-gray-500">✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filters */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="mt-4 flex-row gap-3"
+        >
+          {["ALL", "ARTICLES", "WRITERS"].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              onPress={() => setActiveFilter(filter as any)}
+              className={`px-4 py-2 rounded-full border ${activeFilter === filter ? "bg-electricBlue border-electricBlue" : "bg-transparent border-gray-600"}`}
+            >
+              <Text
+                className={`text-xs font-bold tracking-wider ${activeFilter === filter ? "text-carbon" : "text-gray-400"}`}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Results */}
+      <ScrollView className="flex-1 px-6 pt-6">
+        <Text className="text-gray-500 font-ui text-xs tracking-widest mb-4 uppercase">
+          {searchQuery ? "SEARCH RESULTS" : "TRENDING NOW"}
+        </Text>
+
+        {loading ? (
+          <ActivityIndicator color="#00F0FF" className="mt-10" />
+        ) : results.length === 0 ? (
+          <View className="items-center mt-10">
+            <Text className="text-gray-600 font-heading text-xl">
+              No Signal Found
+            </Text>
+            <Text className="text-gray-700 text-sm mt-2">
+              Try adjusting your frequency.
+            </Text>
+          </View>
+        ) : (
+          <View className="gap-6 pb-20">
+            {results.map((article) => (
+              <TouchableOpacity
+                key={article.id}
+                onPress={() => router.push(`/article/${article.slug}`)}
+                className="flex-row gap-4 border-b border-gray-800 pb-4"
+              >
+                <Image
+                  source={{ uri: article.coverImage }}
+                  className="w-20 h-20 rounded bg-gray-800"
+                />
+                <View className="flex-1">
+                  <Text className="text-electricBlue text-[10px] font-ui mb-1 uppercase">
+                    {article.author.username}
+                  </Text>
+                  <Text className="text-white font-heading text-lg leading-6 mb-1">
+                    {article.title}
+                  </Text>
+                  <Text className="text-gray-500 text-xs line-clamp-1">
+                    {article.excerpt}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-});
